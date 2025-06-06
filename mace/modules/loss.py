@@ -220,6 +220,30 @@ def conditional_huber_forces(
 # ------------------------------------------------------------------------------
 # Loss Modules Combining Multiple Quantities
 # ------------------------------------------------------------------------------
+class WeightedCommittorBoundaryLoss(torch.nn.Module):
+    def __init__(self, kolmogorov_weight=1.0, boundary_weight=1.0) -> None:
+        super().__init__()
+        self.register_buffer(
+            "kolmogorov_weight",
+            torch.tensor(kolmogorov_weight, dtype=torch.get_default_dtype()),
+        )
+        self.register_buffer(
+            "boundary_weight",
+            torch.tensor(boundary_weight, dtype=torch.get_default_dtype()),
+        )
+
+    def forward(
+        self, ref: Batch, pred: TensorDict, ddp: Optional[bool] = None
+    ) -> torch.Tensor:
+        loss_komogorov = committor_error(ref, pred, ddp)
+        loss_boundary = boundary_error(ref, pred, ddp)
+        return self.energy_weight * loss_energy + self.forces_weight * loss_forces
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(kolmogorov_weight={self.kolmogorov_weight:.3f}, "
+            f"boundary_weight={self.boundary_weight:.3f})"
+        )
 
 
 class WeightedEnergyForcesLoss(torch.nn.Module):
